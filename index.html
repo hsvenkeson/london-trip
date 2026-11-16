@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f172a">
+<title>London · Christmas 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  :root {
+    --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --bg:#f8fafc; --accent:#0f172a;
+    --green:#16a34a; --sheet-peek:168px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; font-family: Inter, -apple-system, system-ui, sans-serif; color: var(--ink); background: #e5e7eb; overflow: hidden; }
+  #map { position: fixed; inset: 0; }
+  .leaflet-container { font-family: inherit; }
+  .pin { background: none; border: none; }
+  .leaflet-popup-content-wrapper { border-radius: 12px; }
+  .leaflet-popup-content { font-size: 13px; line-height: 1.45; margin: 12px 14px; }
+  .leaflet-popup-content b { font-size: 14px; }
+  .stn { background: rgba(255,255,255,.95); border: none; border-radius: 6px; padding: 2px 6px; font-size: 11px; font-weight: 600; color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+  .stn:before { display: none; }
+  .ok { color: var(--green); font-weight: 800; }
+
+  /* ---------- top bar ---------- */
+  #top { position: fixed; top: calc(env(safe-area-inset-top) + 10px); left: 10px; right: 10px; z-index: 900; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; }
+  .chipbtn { pointer-events: auto; background: rgba(255,255,255,.96); border: none; border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 13px; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,.18); cursor: pointer; color: var(--ink); }
+  #brand { pointer-events: auto; background: rgba(15,23,42,.92); color: #fff; border-radius: 14px; padding: 8px 12px; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+  #brand b { display: block; font-size: 14px; }
+  #brand span { font-size: 11px; opacity: .75; }
+  #key { position: fixed; top: calc(env(safe-area-inset-top) + 56px); right: 10px; z-index: 900; background: #fff; border-radius: 14px; padding: 12px 14px; box-shadow: 0 4px 16px rgba(0,0,0,.2); font-size: 12.5px; line-height: 1.75; display: none; min-width: 190px; }
+  #key.show { display: block; }
+  #key h4 { margin: 0 0 2px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  #key h4:not(:first-child) { margin-top: 8px; }
+  #key svg { vertical-align: -4px; margin-right: 8px; }
+
+  /* ---------- bottom sheet (phone) ---------- */
+  #sheet { position: fixed; left: 0; right: 0; bottom: 0; height: 92vh; height: 92dvh; z-index: 1000; background: var(--bg);
+           border-radius: 18px 18px 0 0; box-shadow: 0 -4px 20px rgba(0,0,0,.18); display: flex; flex-direction: column;
+           transform: translateY(calc(100% - var(--sheet-peek))); transition: transform .28s cubic-bezier(.2,.8,.2,1); touch-action: none; }
+  #sheet.dragging { transition: none; }
+  #grab { padding: 8px 16px 6px; cursor: grab; flex: 0 0 auto; }
+  #grab .bar { width: 40px; height: 5px; border-radius: 99px; background: #cbd5e1; margin: 0 auto 8px; }
+  #grab h1 { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: -.01em; }
+  #grab .sub { font-size: 12px; color: var(--muted); margin-top: 2px; display: flex; justify-content: space-between; gap: 8px; }
+  #days { overflow-y: auto; -webkit-overflow-scrolling: touch; flex: 1 1 auto; padding: 6px 12px calc(env(safe-area-inset-bottom) + 24px); touch-action: pan-y; }
+
+  .day { background: #fff; border-radius: 14px; margin-bottom: 10px; box-shadow: 0 1px 2px rgba(0,0,0,.06); border: 1px solid var(--line); overflow: hidden; }
+  .day.today { border-color: #0f172a; box-shadow: 0 0 0 1px #0f172a; }
+  .dhead { display: grid; grid-template-columns: 30px 1fr auto 18px; align-items: center; gap: 10px; padding: 12px 12px; cursor: pointer; user-select: none; }
+  .dhead .when { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .dhead .when .now { color: #fff; background: #0f172a; border-radius: 4px; padding: 0 5px; margin-left: 4px; }
+  .dhead .ttl { font-size: 15px; font-weight: 700; margin-top: 1px; }
+  .chev { transition: transform .2s; color: var(--muted); font-size: 14px; text-align: center; }
+  .day.open .chev { transform: rotate(90deg); }
+  .dbody { display: none; border-top: 1px solid var(--line); }
+  .day.open .dbody { display: block; }
+  .dnote { padding: 8px 14px; font-size: 12px; color: #475569; background: #f8fafc; border-bottom: 1px solid var(--line); }
+
+  /* route switch */
+  .sw { position: relative; display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); font-weight: 600; }
+  .sw input { appearance: none; -webkit-appearance: none; width: 38px; height: 22px; border-radius: 99px; background: #cbd5e1; position: relative; cursor: pointer; transition: background .2s; margin: 0; }
+  .sw input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: left .2s; }
+  .sw input:checked { background: #0f172a; }
+  .sw input:checked::after { left: 18px; }
+
+  .step { display: grid; grid-template-columns: 54px 1fr; gap: 8px; padding: 10px 14px; border-bottom: 1px solid #f1f5f9; cursor: pointer; position: relative; }
+  .step:last-child { border-bottom: none; }
+  .step:active { background: #f1f5f9; }
+  .step.sel { background: #fef9c3; }
+  .step.past { opacity: .45; }
+  .step.next { background: #ecfdf5; }
+  .step.next::before { content: 'NEXT'; position: absolute; right: 10px; top: 8px; font-size: 9px; font-weight: 800; color: #047857; letter-spacing: .06em; }
+  .step .t { font-weight: 700; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+  .step .x { font-size: 13.5px; line-height: 1.4; }
+  .step .x .w { font-weight: 600; }
+  .ln { display: inline-block; font-size: 10px; font-weight: 700; color: #fff; border-radius: 4px; padding: 1px 5px; margin-right: 5px; vertical-align: 1px; white-space: nowrap; }
+  .chk { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: var(--green); color: #fff; font-size: 10px; font-weight: 800; margin-left: 5px; vertical-align: 0; }
+  .opt { font-size: 10px; font-weight: 700; color: #4338ca; background: #e0e7ff; border-radius: 4px; padding: 1px 5px; margin-left: 5px; }
+  .foot { text-align: center; font-size: 11px; color: var(--muted); padding: 8px 0 4px; }
+
+  /* ---------- wide screens: side panel ---------- */
+  @media (min-width: 900px) {
+    #sheet { top: 0; bottom: 0; left: 0; right: auto; width: 400px; height: 100%; border-radius: 0; transform: none !important; box-shadow: 4px 0 20px rgba(0,0,0,.12); }
+    #grab { padding-top: 18px; cursor: default; }
+    #grab .bar { display: none; }
+    #top { left: 410px; }
+    #brand { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div id="top">
+  <div id="brand"><b>London · Christmas 2026</b><span>Richmond Hill Hotel · Dec 26–30</span></div>
+  <button class="chipbtn" id="keybtn">Key</button>
+</div>
+<div id="key"></div>
+
+<div id="sheet">
+  <div id="grab">
+    <div class="bar"></div>
+    <h1>London trip itinerary</h1>
+    <div class="sub"><span id="sub-left">Tap a day to open it · tap a step to find it</span><span id="updated"></span></div>
+  </div>
+  <div id="days"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* =====================================================================
+   EDIT HERE — all trip content lives in this block.
+   Steps: [time, text, place key (from PLACES) or null, line or null, booked?]
+   Lines: piccadilly, district, hc, jubilee, southern, swr, walk
+   ===================================================================== */
+const UPDATED = '2026-11-15';
+
+const PLACES = {
+  // markers + tap targets
+  'Heathrow T5':[51.4723,-0.4880], 'Hotel':[51.4529,-0.3003], 'Richmond':[51.4633,-0.3014], 'Hill Rise':[51.4575,-0.3030],
+  'Loftus Road':[51.5093,-0.2322], 'Kew Victoria Gate':[51.4776,-0.2925], 'Emirates':[51.5549,-0.1084], 'Selhurst Park':[51.3983,-0.0855],
+  'Bates':[51.5084,-0.1375], 'Buckingham Palace':[51.5014,-0.1419], "St Paul's":[51.5138,-0.0984], 'Tower of London':[51.5081,-0.0759],
+  'Spitalfields':[51.5197,-0.0754], 'Brick Lane':[51.5214,-0.0717], 'War Rooms':[51.5021,-0.1291], 'Abbey':[51.4993,-0.1273],
+  'Trafalgar':[51.5080,-0.1281], "His Majesty's":[51.5085,-0.1318], 'London Eye':[51.5033,-0.1196],
+  // stations and walking waypoints
+  'Heathrow T2&3':[51.4713,-0.4524],'Hatton Cross':[51.4669,-0.4227],'Hounslow West':[51.4734,-0.3856],'Hounslow Central':[51.4713,-0.3665],
+  'Hounslow East':[51.4733,-0.3564],'Osterley':[51.4813,-0.3522],'Boston Manor':[51.4956,-0.3250],'Northfields':[51.4995,-0.3142],
+  'South Ealing':[51.5011,-0.3072],'Acton Town':[51.5028,-0.2801],'Hammersmith':[51.4927,-0.2240],'Kew Gardens':[51.4770,-0.2850],
+  'Gunnersbury':[51.4917,-0.2754],'Turnham Green':[51.4951,-0.2547],'Stamford Brook':[51.4950,-0.2459],'Ravenscourt Park':[51.4942,-0.2359],
+  'Barons Court':[51.4905,-0.2139],'West Kensington':[51.4907,-0.2065],"Earl's Court":[51.4920,-0.1934],'Gloucester Road':[51.4945,-0.1829],
+  'South Kensington':[51.4941,-0.1738],'Sloane Square':[51.4924,-0.1565],'Victoria':[51.4965,-0.1447],"St James's Park":[51.4994,-0.1335],
+  'Westminster':[51.5010,-0.1254],'Embankment':[51.5074,-0.1223],'Temple':[51.5111,-0.1141],'Blackfriars':[51.5120,-0.1040],
+  'Mansion House':[51.5122,-0.0940],'Cannon Street':[51.5113,-0.0904],'Monument':[51.5108,-0.0863],'Tower Hill':[51.5098,-0.0766],
+  'Aldgate East':[51.5154,-0.0726],'Knightsbridge':[51.5015,-0.1607],'Hyde Park Corner':[51.5027,-0.1527],'Green Park':[51.5067,-0.1428],
+  'Piccadilly Circus':[51.5098,-0.1342],'Leicester Square':[51.5113,-0.1281],'Covent Garden':[51.5129,-0.1243],'Holborn':[51.5174,-0.1201],
+  'Russell Square':[51.5230,-0.1244],"King's Cross St Pancras":[51.5308,-0.1238],'Caledonian Road':[51.5481,-0.1188],'Holloway Road':[51.5526,-0.1132],
+  'Arsenal':[51.5586,-0.1059],'Victoria (rail)':[51.4952,-0.1441],'Battersea Park':[51.4776,-0.1476],'Clapham Junction':[51.4643,-0.1704],
+  'Wandsworth Common':[51.4462,-0.1634],'Balham':[51.4431,-0.1525],'Streatham Common':[51.4187,-0.1357],'Norbury':[51.4115,-0.1219],
+  'Thornton Heath':[51.3988,-0.1003],'Selhurst':[51.3918,-0.0882],'Wandsworth Town':[51.4609,-0.1880],'Putney':[51.4613,-0.2163],
+  'Barnes':[51.4670,-0.2420],'Mortlake':[51.4681,-0.2672],'North Sheen':[51.4652,-0.2885],
+  'Hammersmith (H&C)':[51.4936,-0.2251],'Goldhawk Road':[51.5018,-0.2267],"Shepherd's Bush Market":[51.5058,-0.2265],
+  "St James's St":[51.5068,-0.1392],'Buckingham Palace Rd':[51.4985,-0.1430],'Whitehall':[51.5050,-0.1265],
+  'Hungerford Bridge':[51.5065,-0.1200],'Westminster Bridge':[51.5008,-0.1220]
+};
+
+// Map markers: [category, day, name, place key, booked?, popup line]
+const MARKERS = [
+  ['airport', null,  'Heathrow Terminal 5', 'Heathrow T5', true, 'Arrive Sat Dec 26, 09:10 · Depart Wed Dec 30, 12:10'],
+  ['hotel',   null,  'Richmond Hill Hotel', 'Hotel', true, 'Home base, Dec 26–30 · Check-in 15:00 · Check-out 11:00'],
+  ['stadium', 'd26', 'QPR v Bristol City', 'Loftus Road', true, 'Sat Dec 26 · 15:00 · Loftus Road'],
+  ['sight',   'd26', 'Christmas at Kew', 'Kew Victoria Gate', false, 'Sat Dec 26 · ~18:00 · light trail (optional)'],
+  ['stadium', 'd27', 'Arsenal stadium tour', 'Emirates', true, 'Sun Dec 27 · 10:15–12:15 · Emirates Stadium'],
+  ['sight',   'd27', 'Bates Gentlemen’s Hatter', 'Bates', false, 'Sun Dec 27 · ~13:35 · 73 Jermyn St'],
+  ['sight',   'd27', 'Buckingham Palace', 'Buckingham Palace', false, 'Sun Dec 27 · ~14:20 · walk past'],
+  ['stadium', 'd27', 'Crystal Palace v Arsenal', 'Selhurst Park', true, 'Sun Dec 27 · 19:00 · be here by 16:00'],
+  ['sight',   'd28', 'St Paul’s Cathedral', "St Paul's", false, 'Mon Dec 28 · ~08:50 · climb the dome'],
+  ['sight',   'd28', 'Tower of London', 'Tower of London', false, 'Mon Dec 28 · 10:20–12:40'],
+  ['sight',   'd28', 'Food tour start: Old Spitalfields Market', 'Spitalfields', false, 'Mon Dec 28 · 13:00 · East End food tour'],
+  ['sight',   'd28', 'Brick Lane', 'Brick Lane', false, 'Mon Dec 28 · afternoon · food tour'],
+  ['sight',   'd29', 'Churchill War Rooms', 'War Rooms', false, 'Tue Dec 29 · 09:30–11:15'],
+  ['sight',   'd29', 'Westminster Abbey', 'Abbey', false, 'Tue Dec 29 · 11:20–12:40'],
+  ['sight',   'd29', 'Trafalgar Square', 'Trafalgar', false, 'Tue Dec 29 · ~13:45'],
+  ['theatre', 'd29', 'Phantom of the Opera', "His Majesty's", true, 'Tue Dec 29 · 14:30 · His Majesty’s Theatre'],
+  ['sight',   'd29', 'London Eye', 'London Eye', false, 'Tue Dec 29 · ~17:45']
+];
+
+const DAYS = [
+  { id: 'd26', date: '2026-12-26', label: 'Sat Dec 26', title: 'Arrive · QPR · Christmas at Kew',
+    note: 'Boxing Day: reduced Tube service; no Elizabeth line or Heathrow Express. Sunset 15:56.',
+    steps: [
+      ['09:10', 'Land at Heathrow Terminal 5 (BA218).', 'Heathrow T5', null, true],
+      ['09:45', 'At the T5 Tube station, get Oyster cards with the Young Visitor discount for the teens. Adults tap a contactless card or phone.', 'Heathrow T5', null, false],
+      ['10:15', 'Piccadilly line to Hammersmith (~45 min).', 'Hammersmith', 'piccadilly', false],
+      ['11:05', 'District line to Richmond (~20 min).', 'Richmond', 'district', false],
+      ['11:30', 'Walk up Richmond Hill (15–20 min) or taxi from the station.', 'Hill Rise', 'walk', false],
+      ['11:50', 'Richmond Hill Hotel: drop the bags.', 'Hotel', null, true],
+      ['12:45', 'Walk back down to Richmond station.', 'Richmond', 'walk', false],
+      ['13:05', 'District line to Hammersmith, then cross the road to the Hammersmith & City station.', 'Hammersmith (H&C)', 'district', false],
+      ['13:30', 'Hammersmith & City line to Shepherd’s Bush Market (2 stops).', "Shepherd's Bush Market", 'hc', false],
+      ['13:50', 'Walk 10 min to Loftus Road. Lunch at or near the ground.', 'Loftus Road', 'walk', false],
+      ['15:00', '<span class="w">QPR v Bristol City</span>', 'Loftus Road', null, true],
+      ['17:00', 'Walk to Shepherd’s Bush Market. Hammersmith & City line to Hammersmith.', "Shepherd's Bush Market", 'hc', false],
+      ['17:30', 'District line to Kew Gardens (~15 min). Too tired? Stay on to Richmond and eat at the Prince’s Head.', 'Kew Gardens', 'district', false],
+      ['18:00', '<span class="w">Christmas at Kew</span> light trail, Victoria Gate (~2 hrs) <span class="opt">OPTIONAL</span>', 'Kew Victoria Gate', null, false],
+      ['20:00', 'District line one stop to Richmond, walk up the hill and check in.', 'Hotel', 'district', false]
+    ],
+    legs: [
+      ['piccadilly', 'Heathrow T5>Hammersmith'], ['district', 'Hammersmith>Richmond'], ['walk', ['Richmond','Hill Rise','Hotel']],
+      ['walk', ['Hotel','Hill Rise','Richmond']], ['district', 'Richmond>Hammersmith'], ['walk', ['Hammersmith','Hammersmith (H&C)']],
+      ['hc', ['Hammersmith (H&C)','Goldhawk Road',"Shepherd's Bush Market"]], ['walk', ["Shepherd's Bush Market",'Loftus Road']],
+      ['hc', ["Shepherd's Bush Market",'Goldhawk Road','Hammersmith (H&C)']], ['district', 'Hammersmith>Kew Gardens'],
+      ['walk', ['Kew Gardens','Kew Victoria Gate']], ['district', ['Kew Gardens','Richmond']], ['walk', ['Richmond','Hill Rise','Hotel']]
+    ] },
+
+  { id: 'd27', date: '2026-12-27', label: 'Sun Dec 27', title: 'Arsenal tour · Bates · Palace v Arsenal',
+    note: 'Be at Selhurst Park by 16:00. Running late? Cut lunch short; Bates and the Palace are on the way to Victoria.',
+    steps: [
+      ['08:50', 'Leave the hotel and walk down to Richmond station.', 'Richmond', 'walk', false],
+      ['09:10', 'District line to Hammersmith (~20 min).', 'Hammersmith', 'district', false],
+      ['09:35', 'Piccadilly line to Arsenal (~30 min), then a 5 min walk.', 'Arsenal', 'piccadilly', false],
+      ['10:15', '<span class="w">Arsenal stadium tour</span> and museum', 'Emirates', null, true],
+      ['12:20', 'Piccadilly line to Piccadilly Circus (~20 min, no change).', 'Piccadilly Circus', 'piccadilly', false],
+      ['12:45', 'Lunch near Piccadilly Circus.', 'Piccadilly Circus', null, false],
+      ['13:35', '<span class="w">Bates Gentlemen’s Hatter</span>, 73 Jermyn St (open 11:00–16:00 Sun)', 'Bates', 'walk', false],
+      ['14:05', 'Walk down St James’s St and through Green Park to <span class="w">Buckingham Palace</span> (~15 min).', 'Buckingham Palace', 'walk', false],
+      ['14:30', 'Walk down Buckingham Palace Rd to Victoria station (10–12 min).', 'Victoria (rail)', 'walk', false],
+      ['14:50', 'Southern train to Selhurst (~20–25 min). Check the board shows it stops at Selhurst.', 'Selhurst', 'southern', false],
+      ['15:30', 'Arrive at Selhurst Park, 30 min before the 16:00 deadline.', 'Selhurst Park', 'walk', false],
+      ['19:00', '<span class="w">Crystal Palace v Arsenal</span>, Executive Box', 'Selhurst Park', null, true],
+      ['~21:00', 'Train from Selhurst to Clapham Junction, then train to Richmond. Tap in; no tickets to book.', 'Clapham Junction', 'swr', false]
+    ],
+    legs: [
+      ['walk', ['Hotel','Hill Rise','Richmond']], ['district', 'Richmond>Hammersmith'], ['piccadilly', 'Hammersmith>Arsenal'],
+      ['walk', ['Arsenal','Emirates']], ['piccadilly', 'Arsenal>Piccadilly Circus'], ['walk', ['Piccadilly Circus','Bates']],
+      ['walk', ['Bates',"St James's St",'Buckingham Palace']], ['walk', ['Buckingham Palace','Buckingham Palace Rd','Victoria (rail)']],
+      ['southern', 'Victoria (rail)>Selhurst'], ['walk', ['Selhurst','Selhurst Park']], ['southern', 'Selhurst>Clapham Junction'],
+      ['swr', 'Clapham Junction>Richmond']
+    ] },
+
+  { id: 'd28', date: '2026-12-28', label: 'Mon Dec 28', title: 'St Paul’s · Tower of London · East End food tour',
+    note: 'UK bank holiday. The food tour is lunch and an early dinner in one.',
+    steps: [
+      ['07:40', 'Leave the hotel and walk down to Richmond station.', 'Richmond', 'walk', false],
+      ['07:55', 'District line to Mansion House (~50 min; many trains run straight through).', 'Mansion House', 'district', false],
+      ['08:50', '<span class="w">St Paul’s Cathedral</span>: climb the dome first', "St Paul's", 'walk', false],
+      ['10:05', 'District line to Tower Hill (3 stops), then a 5 min walk.', 'Tower Hill', 'district', false],
+      ['10:20', '<span class="w">Tower of London</span>: Crown Jewels first, then a Yeoman Warder (Beefeater) tour', 'Tower of London', null, false],
+      ['12:40', 'Walk 15–20 min north to Old Spitalfields Market.', 'Spitalfields', 'walk', false],
+      ['13:00', '<span class="w">East End food tour</span> (~4 hrs): Spitalfields, Brick Lane curry, Beigel Bake', 'Spitalfields', null, false],
+      ['~17:00', 'The tour ends near Brick Lane. Walk to Aldgate East.', 'Brick Lane', 'walk', false],
+      ['17:15', 'District line back to Richmond (~1 hr). Check the train says Richmond.', 'Aldgate East', 'district', false]
+    ],
+    legs: [
+      ['walk', ['Hotel','Hill Rise','Richmond']], ['district', 'Richmond>Hammersmith'], ['district', 'Hammersmith>Mansion House'],
+      ['walk', ['Mansion House',"St Paul's"]], ['district', 'Mansion House>Tower Hill'], ['walk', ['Tower Hill','Tower of London']],
+      ['walk', ['Tower of London','Aldgate East','Spitalfields']], ['walk', ['Spitalfields','Brick Lane']], ['walk', ['Brick Lane','Aldgate East']],
+      ['district', 'Aldgate East>Hammersmith'], ['district', 'Hammersmith>Richmond']
+    ] },
+
+  { id: 'd29', date: '2026-12-29', label: 'Tue Dec 29', title: 'War Rooms · Abbey · Phantom · London Eye',
+    note: 'Phantom starts 14:30; aim to be in your seats by 14:15.',
+    steps: [
+      ['08:30', 'Leave the hotel and walk down to Richmond station.', 'Richmond', 'walk', false],
+      ['08:45', 'District line to Westminster (~40 min).', 'Westminster', 'district', false],
+      ['09:30', '<span class="w">Churchill War Rooms</span>', 'War Rooms', 'walk', false],
+      ['11:20', '<span class="w">Westminster Abbey</span> (5 min walk)', 'Abbey', 'walk', false],
+      ['12:40', 'Lunch, then walk up Whitehall to <span class="w">Trafalgar Square</span>.', 'Trafalgar', 'walk', false],
+      ['14:30', '<span class="w">Phantom of the Opera</span>, His Majesty’s Theatre', "His Majesty's", 'walk', true],
+      ['17:15', 'Walk over Hungerford Bridge to the London Eye (~20 min).', 'Hungerford Bridge', 'walk', false],
+      ['17:45', '<span class="w">London Eye</span> after dark', 'London Eye', null, false],
+      ['19:00', 'Dinner on the South Bank, then walk over Westminster Bridge and take the District line to Richmond.', 'Westminster', 'district', false]
+    ],
+    legs: [
+      ['walk', ['Hotel','Hill Rise','Richmond']], ['district', 'Richmond>Hammersmith'], ['district', 'Hammersmith>Westminster'],
+      ['walk', ['Westminster','War Rooms']], ['walk', ['War Rooms','Abbey']], ['walk', ['Abbey','Whitehall','Trafalgar']],
+      ['walk', ['Trafalgar',"His Majesty's"]], ['walk', ["His Majesty's",'Trafalgar','Hungerford Bridge','London Eye']],
+      ['walk', ['London Eye','Westminster Bridge','Westminster']], ['district', 'Westminster>Hammersmith'], ['district', 'Hammersmith>Richmond']
+    ] },
+
+  { id: 'd30', date: '2026-12-30', label: 'Wed Dec 30', title: 'Fly home',
+    note: 'BA219 leaves Heathrow T5 at 12:10. Taxi from the hotel to T5 is ~30 min if you’d rather skip the Tube with bags.',
+    steps: [
+      ['08:00', 'Breakfast and check out (by 11:00 at the latest).', 'Hotel', null, true],
+      ['09:00', 'Walk down to Richmond station.', 'Richmond', 'walk', false],
+      ['09:15', 'District line to Hammersmith.', 'Hammersmith', 'district', false],
+      ['09:35', 'Piccadilly line to Heathrow Terminal 5 (~45 min). Take a train going to Terminal 5, not Terminal 4.', 'Heathrow T5', 'piccadilly', false],
+      ['12:10', '<span class="w">BA219 to Denver</span>', 'Heathrow T5', null, true]
+    ],
+    legs: [
+      ['walk', ['Hotel','Hill Rise','Richmond']], ['district', 'Richmond>Hammersmith'], ['piccadilly', 'Hammersmith>Heathrow T5']
+    ] }
+];
+/* ===================== end of trip content ===================== */
+
+const LINES = {
+  piccadilly: { name: 'Piccadilly', color: '#003688' },
+  district:   { name: 'District',   color: '#00782A' },
+  hc:         { name: 'Ham & City', color: '#D9748B' },
+  jubilee:    { name: 'Jubilee',    color: '#868F98' },
+  southern:   { name: 'Southern rail', color: '#5aa02c', dash: '9 7' },
+  swr:        { name: 'SW Railway', color: '#c8102e', dash: '9 7' },
+  walk:       { name: 'Walk',       color: '#64748b', dash: '2 8' }
+};
+const SEQ = {
+  piccadilly: ['Heathrow T5','Heathrow T2&3','Hatton Cross','Hounslow West','Hounslow Central','Hounslow East','Osterley','Boston Manor','Northfields','South Ealing','Acton Town','Turnham Green','Hammersmith','Barons Court',"Earl's Court",'Gloucester Road','South Kensington','Knightsbridge','Hyde Park Corner','Green Park','Piccadilly Circus','Leicester Square','Covent Garden','Holborn','Russell Square',"King's Cross St Pancras",'Caledonian Road','Holloway Road','Arsenal'],
+  district: ['Richmond','Kew Gardens','Gunnersbury','Turnham Green','Stamford Brook','Ravenscourt Park','Hammersmith','Barons Court','West Kensington',"Earl's Court",'Gloucester Road','South Kensington','Sloane Square','Victoria',"St James's Park",'Westminster','Embankment','Temple','Blackfriars','Mansion House','Cannon Street','Monument','Tower Hill','Aldgate East'],
+  southern: ['Victoria (rail)','Battersea Park','Clapham Junction','Wandsworth Common','Balham','Streatham Common','Norbury','Thornton Heath','Selhurst'],
+  swr: ['Clapham Junction','Wandsworth Town','Putney','Barnes','Mortlake','North Sheen','Richmond']
+};
+function stops(line, spec) {
+  if (Array.isArray(spec)) return spec;
+  const [a, b] = spec.split('>'); const arr = SEQ[line]; const i = arr.indexOf(a), j = arr.indexOf(b);
+  if (i < 0 || j < 0) throw new Error('Unknown stop in ' + line + ': ' + spec);
+  return i <= j ? arr.slice(i, j + 1) : arr.slice(j, i + 1).reverse();
+}
+
+/* ---------- icons ---------- */
+const COLORS = { hotel:'#16a34a', stadium:'#1d4ed8', theatre:'#facc15', sight:'#111111', airport:'#dc2626' };
+const CAT_LABEL = { airport:'Airport', hotel:'Hotel', stadium:'Stadiums', theatre:'Theatre', sight:'Things to see' };
+const SHAPE = { d26:'circle', d27:'square', d28:'star', d29:'triangle', d30:'diamond' };
+function pinSvg(color, size) {
+  const w = Math.round(size * 0.72);
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+size+'" viewBox="0 0 24 34"><path d="M12 0C5.4 0 0 5.3 0 11.9 0 20.8 12 34 12 34s12-13.2 12-22.1C24 5.3 18.6 0 12 0z" fill="'+color+'" stroke="#333" stroke-width="1.2"/><circle cx="12" cy="12" r="4.6" fill="#fff"/></svg>';
+}
+function shapeSvg(shape, color, size, label) {
+  const st = 'stroke="#1f2937" stroke-width="1.4" stroke-linejoin="round"';
+  const body = {
+    circle: '<circle cx="12" cy="12" r="10.5" fill="'+color+'" '+st+'/>',
+    square: '<rect x="2" y="2" width="20" height="20" rx="3" fill="'+color+'" '+st+'/>',
+    triangle: '<path d="M12 1.5 L23 22 L1 22 Z" fill="'+color+'" '+st+'/>',
+    star: '<path d="M12 1 L14.9 8.6 L23 9 L16.7 14.1 L18.9 22 L12 17.5 L5.1 22 L7.3 14.1 L1 9 L9.1 8.6 Z" fill="'+color+'" '+st+'/>',
+    diamond: '<path d="M12 1 L23 12 L12 23 L1 12 Z" fill="'+color+'" '+st+'/>'
+  }[shape];
+  const ty = shape === 'triangle' ? 17.3 : shape === 'star' ? 14.4 : 12.6;
+  const txt = label ? '<text x="12" y="'+ty+'" text-anchor="middle" dominant-baseline="middle" font-size="7.5" font-weight="800" font-family="Inter,sans-serif" fill="'+(color === COLORS.theatre ? '#111' : '#fff')+'">'+label+'</text>' : '';
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="'+size+'" height="'+size+'" viewBox="0 0 24 24">'+body+txt+'</svg>';
+}
+function icon(html, w, h, anchorY) { return L.divIcon({ className: 'pin', html, iconSize: [w, h], iconAnchor: [w / 2, anchorY], popupAnchor: [0, -anchorY + 2] }); }
+
+/* ---------- map ---------- */
+const wide = () => window.matchMedia('(min-width: 900px)').matches;
+const map = L.map('map', { zoomControl: false, attributionControl: true });
+if (wide()) L.control.zoom({ position: 'bottomright' }).addTo(map);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  maxZoom: 19, subdomains: 'abcd',
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+}).addTo(map);
+map.attributionControl.setPrefix(false);
+
+const allBounds = L.latLngBounds([]);
+const dayLayers = {}, dayLabels = {}, dayBounds = {};
+DAYS.forEach(d => {
+  const g = L.layerGroup(), labels = L.layerGroup(), b = L.latLngBounds([]);
+  const keyStops = new Set(), allStops = new Set();
+  d.legs.forEach(([line, spec]) => {
+    const st = stops(line, spec), ll = st.map(n => { if (!PLACES[n]) throw new Error('Unknown place ' + n); return PLACES[n]; });
+    const L_ = LINES[line];
+    if (line !== 'walk') L.polyline(ll, { color: '#fff', weight: 9, opacity: .9, interactive: false }).addTo(g);
+    L.polyline(ll, { color: L_.color, weight: line === 'walk' ? 4 : 5, opacity: .95, dashArray: L_.dash || null, lineCap: 'round' })
+      .bindPopup('<b>' + d.label + '</b><br>' + (line === 'walk' ? 'Walk' : L_.name + (line === 'southern' || line === 'swr' ? '' : ' line')) + ': ' + st[0].replace(' (rail)','') + ' → ' + st[st.length - 1].replace(' (rail)',''))
+      .addTo(g);
+    ll.forEach(p => { b.extend(p); allBounds.extend(p); });
+    if (line !== 'walk') { keyStops.add(st[0]); keyStops.add(st[st.length - 1]); st.forEach(n => allStops.add(n)); }
+  });
+  allStops.forEach(n => {
+    const key = keyStops.has(n);
+    L.circleMarker(PLACES[n], { radius: key ? 5.5 : 3, color: '#1f2937', weight: key ? 2 : 1.3, fillColor: '#fff', fillOpacity: 1 })
+      .bindTooltip(n.replace(' (rail)', ' station').replace(' (H&C)', ' (H&C line)')).addTo(g);
+    if (key) L.tooltip({ permanent: true, direction: 'right', offset: [7, 0], className: 'stn' })
+      .setLatLng(PLACES[n]).setContent(n.replace(' (rail)', ' stn').replace(' (H&C)', ' H&C')).addTo(labels);
+  });
+  dayLayers[d.id] = g; dayLabels[d.id] = labels; dayBounds[d.id] = b;
+});
+
+const markers = [];
+MARKERS.forEach(([cat, day, name, key, booked, line]) => {
+  const ll = PLACES[key]; allBounds.extend(ll);
+  const ic = day ? icon(shapeSvg(SHAPE[day], COLORS[cat], booked ? 32 : 26, day.slice(1)), booked ? 32 : 26, booked ? 32 : 26, (booked ? 32 : 26) / 2)
+                 : icon(pinSvg(COLORS[cat], cat === 'hotel' ? 46 : 40), Math.round((cat === 'hotel' ? 46 : 40) * .72), cat === 'hotel' ? 46 : 40, cat === 'hotel' ? 46 : 40);
+  const m = L.marker(ll, { icon: ic, zIndexOffset: cat === 'hotel' ? 1000 : booked ? 500 : 0 })
+    .bindPopup('<b>' + name + (booked ? ' <span class="ok">✓</span>' : '') + '</b><br>' + line).addTo(map);
+  m._day = day; markers.push(m);
+});
+
+/* ---------- state ---------- */
+const londonToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date());
+const todayDay = DAYS.find(d => d.date === londonToday);
+const visible = {}; let focused = null;
+
+function sheetPad() {
+  if (wide()) return { paddingTopLeft: [420, 70], paddingBottomRight: [50, 40] };
+  const sh = document.getElementById('sheet').getBoundingClientRect();
+  const covered = Math.max(0, window.innerHeight - sh.top);
+  return { paddingTopLeft: [24, 80], paddingBottomRight: [24, covered + 20] };
+}
+function setRoute(id, on) {
+  visible[id] = on;
+  if (on) dayLayers[id].addTo(map); else { map.removeLayer(dayLayers[id]); map.removeLayer(dayLabels[id]); }
+  if (on && focused === id) dayLabels[id].addTo(map);
+  const cb = document.querySelector('[data-sw="' + id + '"]'); if (cb) cb.checked = on;
+}
+function focusDay(id) {
+  focused = id;
+  Object.keys(dayLabels).forEach(k => map.removeLayer(dayLabels[k]));
+  markers.forEach(m => m.setOpacity(!id || !m._day || m._day === id ? 1 : .35));
+  if (id) {
+    if (!visible[id]) setRoute(id, true);
+    dayLabels[id].addTo(map);
+    map.flyToBounds(dayBounds[id], Object.assign({ duration: .7, maxZoom: 15 }, sheetPad()));
+  }
+}
+
+/* ---------- build the list ---------- */
+const daysEl = document.getElementById('days');
+const toMin = t => { const m = /(\d{1,2}):(\d{2})/.exec(t); return m ? +m[1] * 60 + +m[2] : null; };
+DAYS.forEach(d => {
+  const el = document.createElement('div'); el.className = 'day' + (todayDay && todayDay.id === d.id ? ' today' : ''); el.dataset.day = d.id;
+  const nowTag = todayDay && todayDay.id === d.id ? '<span class="now">TODAY</span>' : '';
+  el.innerHTML =
+    '<div class="dhead"><div>' + shapeSvg(SHAPE[d.id], '#0f172a', 26, d.id.slice(1)) + '</div>' +
+    '<div><div class="when">' + d.label + nowTag + '</div><div class="ttl">' + d.title + '</div></div>' +
+    '<label class="sw" title="Show this day’s route"><input type="checkbox" data-sw="' + d.id + '"></label><div class="chev">▶</div></div>' +
+    '<div class="dbody">' + (d.note ? '<div class="dnote">' + d.note + '</div>' : '') + '</div>';
+  const body = el.querySelector('.dbody');
+  d.steps.forEach(([t, txt, key, line, booked], i) => {
+    const s = document.createElement('div'); s.className = 'step'; s.dataset.min = toMin(t) ?? '';
+    const chip = line && LINES[line] ? '<span class="ln" style="background:' + LINES[line].color + '">' + LINES[line].name + '</span>' : '';
+    s.innerHTML = '<div class="t">' + t + '</div><div class="x">' + chip + txt + (booked ? '<span class="chk">✓</span>' : '') + '</div>';
+    s.addEventListener('click', () => {
+      document.querySelectorAll('.step.sel').forEach(x => x.classList.remove('sel')); s.classList.add('sel');
+      if (focused !== d.id) { focused = d.id; focusDay(d.id); }
+      if (key && PLACES[key]) {
+        map.flyTo(PLACES[key], 16, { duration: .7 });
+        setTimeout(() => {
+          const pad = sheetPad(); const off = (pad.paddingBottomRight[1] - pad.paddingTopLeft[1]) / 2;
+          if (!wide()) map.panBy([0, off], { animate: true });
+          L.popup({ offset: [0, -6] }).setLatLng(PLACES[key]).setContent('<b>' + t + '</b><br>' + txt.replace(/<span class="opt">.*?<\/span>/, '')).openOn(map);
+        }, 750);
+      }
+    });
+    body.appendChild(s);
+  });
+  el.querySelector('.dhead').addEventListener('click', e => {
+    if (e.target.closest('.sw')) return;
+    const open = !el.classList.contains('open');
+    document.querySelectorAll('.day.open').forEach(x => x !== el && x.classList.remove('open'));
+    el.classList.toggle('open', open);
+    if (open) { if (!wide() && sheetState === 'peek') setSheet('half'); focusDay(d.id); setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); }
+    else { focusDay(null); }
+  });
+  el.querySelector('input').addEventListener('change', e => setRoute(d.id, e.target.checked));
+  daysEl.appendChild(el);
+});
+const foot = document.createElement('div'); foot.className = 'foot';
+foot.innerHTML = '<span class="chk" style="margin:0 4px 0 0">✓</span> booked & confirmed · Times are UK time';
+daysEl.appendChild(foot);
+document.getElementById('updated').textContent = 'Updated ' + new Date(UPDATED + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+// "next up" on today's card
+function markNext() {
+  if (!todayDay) return;
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date()).split(':');
+  const now = +parts[0] * 60 + +parts[1];
+  const steps = [...document.querySelectorAll('[data-day="' + todayDay.id + '"] .step')];
+  let nextSet = false;
+  steps.forEach((s, i) => {
+    s.classList.remove('past', 'next');
+    const m = s.dataset.min === '' ? null : +s.dataset.min;
+    const nm = steps[i + 1] && steps[i + 1].dataset.min !== '' ? +steps[i + 1].dataset.min : null;
+    if (m !== null && nm !== null && nm <= now) s.classList.add('past');
+    else if (!nextSet && m !== null && (nm === null ? m >= now - 90 : nm > now)) { s.classList.add('next'); nextSet = true; }
+  });
+}
+
+/* ---------- key ---------- */
+document.getElementById('key').innerHTML =
+  '<h4>Places</h4>' + Object.keys(CAT_LABEL).map(k => '<div>' + (k === 'airport' || k === 'hotel' ? pinSvg(COLORS[k], 18) : shapeSvg('circle', COLORS[k], 15, '')) + CAT_LABEL[k] + '</div>').join('') +
+  '<h4>Day (marker shape)</h4>' + DAYS.filter(d => d.id !== 'd30').map(d => '<div>' + shapeSvg(SHAPE[d.id], '#94a3b8', 15, '') + d.label + '</div>').join('') +
+  '<h4>Routes</h4>' + ['piccadilly','district','hc','southern','swr','walk'].map(k => '<div><svg width="26" height="10"><line x1="1" y1="5" x2="25" y2="5" stroke="' + LINES[k].color + '" stroke-width="4" stroke-linecap="round" ' + (LINES[k].dash ? 'stroke-dasharray="' + (k === 'walk' ? '1 5' : '5 3') + '"' : '') + '/></svg>' + LINES[k].name + (k==='walk'||k==='southern'||k==='swr'?'':' line') + '</div>').join('') +
+  '<div style="margin-top:8px;color:#64748b">Bigger marker = booked <span class="ok">✓</span></div>';
+document.getElementById('keybtn').addEventListener('click', () => document.getElementById('key').classList.toggle('show'));
+map.on('click', () => document.getElementById('key').classList.remove('show'));
+
+/* ---------- bottom sheet ---------- */
+const sheet = document.getElementById('sheet'), grab = document.getElementById('grab');
+let sheetState = 'peek';
+function snapY(state) {
+  const h = sheet.getBoundingClientRect().height, peek = 168;
+  return state === 'full' ? 0 : state === 'half' ? h - window.innerHeight * 0.5 : h - peek;
+}
+function setSheet(state) { sheetState = state; if (!wide()) sheet.style.transform = 'translateY(' + snapY(state) + 'px)'; }
+let dragY0 = null, base = 0, moved = false;
+grab.addEventListener('pointerdown', e => { if (wide()) return; dragY0 = e.clientY; base = snapY(sheetState); moved = false; sheet.classList.add('dragging'); grab.setPointerCapture(e.pointerId); });
+grab.addEventListener('pointermove', e => {
+  if (dragY0 === null) return; const dy = e.clientY - dragY0; if (Math.abs(dy) > 4) moved = true;
+  sheet.style.transform = 'translateY(' + Math.max(0, base + dy) + 'px)';
+});
+grab.addEventListener('pointerup', e => {
+  if (dragY0 === null) return; sheet.classList.remove('dragging');
+  const y = base + (e.clientY - dragY0); dragY0 = null;
+  if (!moved) { setSheet(sheetState === 'peek' ? 'half' : sheetState === 'half' ? 'full' : 'peek'); return; }
+  const opts = ['full', 'half', 'peek'].map(s => [s, Math.abs(snapY(s) - y)]).sort((a, b) => a[1] - b[1]);
+  setSheet(opts[0][0]);
+});
+window.addEventListener('resize', () => { if (wide()) sheet.style.transform = ''; else setSheet(sheetState); });
+
+/* ---------- start ---------- */
+if (todayDay) {
+  DAYS.forEach(d => setRoute(d.id, d.id === todayDay.id));
+  const el = document.querySelector('[data-day="' + todayDay.id + '"]'); el.classList.add('open');
+  setSheet('half'); map.fitBounds(allBounds);
+  setTimeout(() => { focusDay(todayDay.id); markNext(); }, 350);
+  setInterval(markNext, 60000);
+} else {
+  DAYS.forEach(d => setRoute(d.id, true));
+  setSheet('peek');
+  map.fitBounds(allBounds, sheetPad());
+}
+</script>
+</body>
+</html>
