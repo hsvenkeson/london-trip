@@ -97,7 +97,7 @@
 <div id="map"></div>
 
 <div id="top">
-  <div id="brand"><b>London · Christmas 2026</b><span>Richmond Hill Hotel · Dec 26–30</span></div>
+  <div id="brand"><b>London · Christmas 2026</b><span>Richmond Hill Hotel · Dec 26–31</span></div>
   <button class="chipbtn" id="keybtn">Key</button>
 </div>
 <div id="key"></div>
@@ -118,7 +118,7 @@
    Steps: [time, text, place key (from PLACES) or null, line or null, booked?]
    Lines: piccadilly, district, hc, jubilee, southern, swr, walk
    ===================================================================== */
-const UPDATED = '2026-11-15';
+const UPDATED = '2026-11-22';
 
 const PLACES = {
   // markers + tap targets
@@ -150,51 +150,45 @@ const PLACES = {
 
 // Map markers: [category, day, name, place key, booked?, popup line]
 const MARKERS = [
-  ['airport', null,  'Heathrow Terminal 5', 'Heathrow T5', true, 'Arrive Sat Dec 26, 09:10 · Depart Wed Dec 30, 12:10'],
-  ['hotel',   null,  'Richmond Hill Hotel', 'Hotel', true, 'Home base, Dec 26–30 · Check-in 15:00 · Check-out 11:00'],
+  ['airport', null,  'Heathrow Terminal 5', 'Heathrow T5', true, 'Arrive Sat Dec 26, 09:10 · Depart Thu Dec 31, 12:10'],
+  ['hotel',   null,  'Richmond Hill Hotel', 'Hotel', true, 'Home base, Dec 26–31 · Check-in 15:00 · Check-out 11:00'],
   ['stadium', 'd26', 'QPR v Bristol City', 'Loftus Road', true, 'Sat Dec 26 · 15:00 · Loftus Road'],
-  ['sight',   'd26', 'Christmas at Kew', 'Kew Victoria Gate', false, 'Sat Dec 26 · ~18:00 · light trail (optional)'],
   ['stadium', 'd27', 'Arsenal stadium tour', 'Emirates', true, 'Sun Dec 27 · 10:15–12:15 · Emirates Stadium'],
   ['sight',   'd27', 'Bates Gentlemen’s Hatter', 'Bates', false, 'Sun Dec 27 · ~13:35 · 73 Jermyn St'],
   ['sight',   'd27', 'Buckingham Palace', 'Buckingham Palace', false, 'Sun Dec 27 · ~14:20 · walk past'],
   ['stadium', 'd27', 'Crystal Palace v Arsenal', 'Selhurst Park', true, 'Sun Dec 27 · 19:00 · be here by 16:00'],
-  ['sight',   'd28', 'St Paul’s Cathedral', "St Paul's", false, 'Mon Dec 28 · ~08:50 · climb the dome'],
-  ['sight',   'd28', 'Tower of London', 'Tower of London', false, 'Mon Dec 28 · 10:20–12:40'],
+  ['sight',   'd28', 'Tower of London', 'Tower of London', false, 'Mon Dec 28 · 10:15–12:40'],
   ['sight',   'd28', 'Food tour start: Old Spitalfields Market', 'Spitalfields', false, 'Mon Dec 28 · 13:00 · East End food tour'],
   ['sight',   'd28', 'Brick Lane', 'Brick Lane', false, 'Mon Dec 28 · afternoon · food tour'],
-  ['sight',   'd29', 'Churchill War Rooms', 'War Rooms', false, 'Tue Dec 29 · 09:30–11:15'],
-  ['sight',   'd29', 'Westminster Abbey', 'Abbey', false, 'Tue Dec 29 · 11:20–12:40'],
-  ['sight',   'd29', 'Trafalgar Square', 'Trafalgar', false, 'Tue Dec 29 · ~13:45'],
+  ['sight',   'd29', 'Westminster Abbey', 'Abbey', false, 'Tue Dec 29 · 10:00–11:30'],
+  ['sight',   'd29', 'Trafalgar Square', 'Trafalgar', false, 'Tue Dec 29 · ~12:00'],
   ['theatre', 'd29', 'Phantom of the Opera', "His Majesty's", true, 'Tue Dec 29 · 14:30 · His Majesty’s Theatre'],
-  ['sight',   'd29', 'London Eye', 'London Eye', false, 'Tue Dec 29 · ~17:45']
+  ['sight',   'd29', 'London Eye', 'London Eye', false, 'Tue Dec 29 · ~17:45'],
+  ['sight',   'd30', 'St Paul’s Cathedral', "St Paul's", false, 'Wed Dec 30 · 09:30–11:00 · climb the dome'],
+  ['sight',   'd30', 'Churchill War Rooms', 'War Rooms', false, 'Wed Dec 30 · 11:30–13:15'],
+  ['sight',   'd30', 'Christmas at Kew', 'Kew Victoria Gate', false, 'Wed Dec 30 · ~18:00 · light trail']
 ];
 
 const DAYS = [
-  { id: 'd26', date: '2026-12-26', label: 'Sat Dec 26', title: 'Arrive · QPR · Christmas at Kew',
+  { id: 'd26', date: '2026-12-26', label: 'Sat Dec 26', title: 'Arrive · Richmond · QPR',
     note: 'Boxing Day: reduced Tube service; no Elizabeth line or Heathrow Express. Sunset 15:56.',
     steps: [
       ['09:10', 'Land at Heathrow Terminal 5 (BA218).', 'Heathrow T5', null, true],
-      ['09:45', 'At the T5 Tube station, get Oyster cards with the Young Visitor discount for the teens. Adults tap a contactless card or phone.', 'Heathrow T5', null, false],
-      ['10:15', 'Piccadilly line to Hammersmith (~45 min).', 'Hammersmith', 'piccadilly', false],
-      ['11:05', 'District line to Richmond (~20 min).', 'Richmond', 'district', false],
-      ['11:30', 'Walk up Richmond Hill (15–20 min) or taxi from the station.', 'Hill Rise', 'walk', false],
-      ['11:50', 'Richmond Hill Hotel: drop the bags.', 'Hotel', null, true],
-      ['12:45', 'Walk back down to Richmond station.', 'Richmond', 'walk', false],
-      ['13:05', 'District line to Hammersmith, then cross the road to the Hammersmith & City station.', 'Hammersmith (H&C)', 'district', false],
-      ['13:30', 'Hammersmith & City line to Shepherd’s Bush Market (2 stops).', "Shepherd's Bush Market", 'hc', false],
-      ['13:50', 'Walk 10 min to Loftus Road. Lunch at or near the ground.', 'Loftus Road', 'walk', false],
-      ['15:00', '<span class="w">QPR v Bristol City</span>', 'Loftus Road', null, true],
-      ['17:00', 'Walk to Shepherd’s Bush Market. Hammersmith & City line to Hammersmith.', "Shepherd's Bush Market", 'hc', false],
-      ['17:30', 'District line to Kew Gardens (~15 min). Too tired? Stay on to Richmond and eat at the Prince’s Head.', 'Kew Gardens', 'district', false],
-      ['18:00', '<span class="w">Christmas at Kew</span> light trail, Victoria Gate (~2 hrs) <span class="opt">OPTIONAL</span>', 'Kew Victoria Gate', null, false],
-      ['20:00', 'District line one stop to Richmond, walk up the hill and check in.', 'Hotel', 'district', false]
+      ['~10:00', 'Meet the pre-booked minicab in T5 arrivals.', 'Heathrow T5', null, false],
+      ['~10:45', 'Richmond Hill Hotel: drop the bags (check-in is from 15:00).', 'Hotel', null, true],
+      ['11:00', 'Walk down the hill and along the river. Lunch in Richmond, e.g. the Prince’s Head on Richmond Green.', 'Richmond', 'walk', false],
+      ['13:05', 'District line to Hammersmith (~20 min). At Hammersmith station, get the teens’ Oyster cards with the Young Visitor discount; adults tap contactless.', 'Hammersmith', 'district', false],
+      ['13:35', 'Cross the road to the Hammersmith & City station, ride 2 stops to Shepherd’s Bush Market, then walk 10 min.', "Shepherd's Bush Market", 'hc', false],
+      ['15:00', '<span class="w">QPR v Bristol City</span>, Loftus Road', 'Loftus Road', null, true],
+      ['17:00', 'Walk to Shepherd’s Bush Market. Hammersmith & City line to Hammersmith, then District line to Richmond.', 'Richmond', 'district', false],
+      ['~17:45', 'Check in at the hotel.', 'Hotel', 'walk', true],
+      ['19:00', 'Dinner in Richmond, then an early night.', 'Richmond', null, false]
     ],
     legs: [
-      ['piccadilly', 'Heathrow T5>Hammersmith'], ['district', 'Hammersmith>Richmond'], ['walk', ['Richmond','Hill Rise','Hotel']],
       ['walk', ['Hotel','Hill Rise','Richmond']], ['district', 'Richmond>Hammersmith'], ['walk', ['Hammersmith','Hammersmith (H&C)']],
       ['hc', ['Hammersmith (H&C)','Goldhawk Road',"Shepherd's Bush Market"]], ['walk', ["Shepherd's Bush Market",'Loftus Road']],
-      ['hc', ["Shepherd's Bush Market",'Goldhawk Road','Hammersmith (H&C)']], ['district', 'Hammersmith>Kew Gardens'],
-      ['walk', ['Kew Gardens','Kew Victoria Gate']], ['district', ['Kew Gardens','Richmond']], ['walk', ['Richmond','Hill Rise','Hotel']]
+      ['walk', ['Loftus Road',"Shepherd's Bush Market"]], ['hc', ["Shepherd's Bush Market",'Goldhawk Road','Hammersmith (H&C)']],
+      ['district', 'Hammersmith>Richmond'], ['walk', ['Richmond','Hill Rise','Hotel']]
     ] },
 
   { id: 'd27', date: '2026-12-27', label: 'Sun Dec 27', title: 'Arsenal tour · Bates · Palace v Arsenal',
@@ -222,34 +216,32 @@ const DAYS = [
       ['swr', 'Clapham Junction>Richmond']
     ] },
 
-  { id: 'd28', date: '2026-12-28', label: 'Mon Dec 28', title: 'St Paul’s · Tower of London · East End food tour',
+  { id: 'd28', date: '2026-12-28', label: 'Mon Dec 28', title: 'Tower of London · East End food tour',
     note: 'UK bank holiday. The food tour is lunch and an early dinner in one.',
     steps: [
-      ['07:40', 'Leave the hotel and walk down to Richmond station.', 'Richmond', 'walk', false],
-      ['07:55', 'District line to Mansion House (~50 min; many trains run straight through).', 'Mansion House', 'district', false],
-      ['08:50', '<span class="w">St Paul’s Cathedral</span>: climb the dome first', "St Paul's", 'walk', false],
-      ['10:05', 'District line to Tower Hill (3 stops), then a 5 min walk.', 'Tower Hill', 'district', false],
-      ['10:20', '<span class="w">Tower of London</span>: Crown Jewels first, then a Yeoman Warder (Beefeater) tour', 'Tower of London', null, false],
+      ['09:00', 'Leave the hotel and walk down to Richmond station.', 'Richmond', 'walk', false],
+      ['09:15', 'District line to Tower Hill (~55 min; many trains run straight through), then a 5 min walk.', 'Tower Hill', 'district', false],
+      ['10:15', '<span class="w">Tower of London</span>: Crown Jewels first, then a Yeoman Warder (Beefeater) tour', 'Tower of London', null, false],
       ['12:40', 'Walk 15–20 min north to Old Spitalfields Market.', 'Spitalfields', 'walk', false],
       ['13:00', '<span class="w">East End food tour</span> (~4 hrs): Spitalfields, Brick Lane curry, Beigel Bake', 'Spitalfields', null, false],
       ['~17:00', 'The tour ends near Brick Lane. Walk to Aldgate East.', 'Brick Lane', 'walk', false],
       ['17:15', 'District line back to Richmond (~1 hr). Check the train says Richmond.', 'Aldgate East', 'district', false]
     ],
     legs: [
-      ['walk', ['Hotel','Hill Rise','Richmond']], ['district', 'Richmond>Hammersmith'], ['district', 'Hammersmith>Mansion House'],
-      ['walk', ['Mansion House',"St Paul's"]], ['district', 'Mansion House>Tower Hill'], ['walk', ['Tower Hill','Tower of London']],
-      ['walk', ['Tower of London','Aldgate East','Spitalfields']], ['walk', ['Spitalfields','Brick Lane']], ['walk', ['Brick Lane','Aldgate East']],
-      ['district', 'Aldgate East>Hammersmith'], ['district', 'Hammersmith>Richmond']
+      ['walk', ['Hotel','Hill Rise','Richmond']], ['district', 'Richmond>Hammersmith'], ['district', 'Hammersmith>Tower Hill'],
+      ['walk', ['Tower Hill','Tower of London']], ['walk', ['Tower of London','Aldgate East','Spitalfields']],
+      ['walk', ['Spitalfields','Brick Lane']], ['walk', ['Brick Lane','Aldgate East']],
+      ['district', 'Aldgate East>Hammersmith'], ['district', 'Hammersmith>Richmond'], ['walk', ['Richmond','Hill Rise','Hotel']]
     ] },
 
-  { id: 'd29', date: '2026-12-29', label: 'Tue Dec 29', title: 'War Rooms · Abbey · Phantom · London Eye',
+  { id: 'd29', date: '2026-12-29', label: 'Tue Dec 29', title: 'Westminster Abbey · Phantom · London Eye',
     note: 'Phantom starts 14:30; aim to be in your seats by 14:15.',
     steps: [
-      ['08:30', 'Leave the hotel and walk down to Richmond station.', 'Richmond', 'walk', false],
-      ['08:45', 'District line to Westminster (~40 min).', 'Westminster', 'district', false],
-      ['09:30', '<span class="w">Churchill War Rooms</span>', 'War Rooms', 'walk', false],
-      ['11:20', '<span class="w">Westminster Abbey</span> (5 min walk)', 'Abbey', 'walk', false],
-      ['12:40', 'Lunch, then walk up Whitehall to <span class="w">Trafalgar Square</span>.', 'Trafalgar', 'walk', false],
+      ['09:00', 'Leave the hotel and walk down to Richmond station.', 'Richmond', 'walk', false],
+      ['09:15', 'District line to Westminster (~40 min).', 'Westminster', 'district', false],
+      ['10:00', '<span class="w">Westminster Abbey</span> (5 min walk)', 'Abbey', 'walk', false],
+      ['11:30', 'Walk up Whitehall past Horse Guards to <span class="w">Trafalgar Square</span>.', 'Trafalgar', 'walk', false],
+      ['12:15', 'Lunch around Covent Garden or Leicester Square.', 'Trafalgar', null, false],
       ['14:30', '<span class="w">Phantom of the Opera</span>, His Majesty’s Theatre', "His Majesty's", 'walk', true],
       ['17:15', 'Walk over Hungerford Bridge to the London Eye (~20 min).', 'Hungerford Bridge', 'walk', false],
       ['17:45', '<span class="w">London Eye</span> after dark', 'London Eye', null, false],
@@ -257,24 +249,49 @@ const DAYS = [
     ],
     legs: [
       ['walk', ['Hotel','Hill Rise','Richmond']], ['district', 'Richmond>Hammersmith'], ['district', 'Hammersmith>Westminster'],
-      ['walk', ['Westminster','War Rooms']], ['walk', ['War Rooms','Abbey']], ['walk', ['Abbey','Whitehall','Trafalgar']],
+      ['walk', ['Westminster','Abbey']], ['walk', ['Abbey','Whitehall','Trafalgar']],
       ['walk', ['Trafalgar',"His Majesty's"]], ['walk', ["His Majesty's",'Trafalgar','Hungerford Bridge','London Eye']],
-      ['walk', ['London Eye','Westminster Bridge','Westminster']], ['district', 'Westminster>Hammersmith'], ['district', 'Hammersmith>Richmond']
+      ['walk', ['London Eye','Westminster Bridge','Westminster']], ['district', 'Westminster>Hammersmith'], ['district', 'Hammersmith>Richmond'],
+      ['walk', ['Richmond','Hill Rise','Hotel']]
     ] },
 
-  { id: 'd30', date: '2026-12-30', label: 'Wed Dec 30', title: 'Fly home',
-    note: 'BA219 leaves Heathrow T5 at 12:10. Taxi from the hotel to T5 is ~30 min if you’d rather skip the Tube with bags.',
+  { id: 'd30', date: '2026-12-30', label: 'Wed Dec 30', title: 'St Paul’s · War Rooms · Christmas at Kew',
+    note: 'Free afternoon. Christmas at Kew is one stop from the hotel.',
     steps: [
-      ['08:00', 'Breakfast and check out (by 11:00 at the latest).', 'Hotel', null, true],
-      ['09:00', 'Walk down to Richmond station.', 'Richmond', 'walk', false],
-      ['09:15', 'District line to Hammersmith.', 'Hammersmith', 'district', false],
-      ['09:35', 'Piccadilly line to Heathrow Terminal 5 (~45 min). Take a train going to Terminal 5, not Terminal 4.', 'Heathrow T5', 'piccadilly', false],
+      ['08:30', 'Leave the hotel and walk down to Richmond station.', 'Richmond', 'walk', false],
+      ['08:45', 'District line to Mansion House (~50 min), then a 5 min walk.', 'Mansion House', 'district', false],
+      ['09:30', '<span class="w">St Paul’s Cathedral</span>: climb the dome first', "St Paul's", 'walk', false],
+      ['11:05', 'District line Mansion House → Westminster (~10 min), then a 5 min walk.', 'Westminster', 'district', false],
+      ['11:30', '<span class="w">Churchill War Rooms</span> (~1¾ hrs)', 'War Rooms', 'walk', false],
+      ['13:15', '<span class="w">Free afternoon</span>. Lunch, then do whatever you feel like.', 'War Rooms', null, false],
+      ['~17:00', 'Head back west on the District line; get off at Kew Gardens (one stop before Richmond).', 'Kew Gardens', 'district', false],
+      ['18:00', '<span class="w">Christmas at Kew</span> light trail, Victoria Gate (~2 hrs)', 'Kew Victoria Gate', null, false],
+      ['20:00', 'District line one stop to Richmond, then up the hill. Pack for tomorrow.', 'Hotel', 'district', false]
+    ],
+    legs: [
+      ['walk', ['Hotel','Hill Rise','Richmond']], ['district', 'Richmond>Hammersmith'], ['district', 'Hammersmith>Mansion House'],
+      ['walk', ['Mansion House',"St Paul's"]], ['walk', ["St Paul's",'Mansion House']], ['district', 'Mansion House>Westminster'],
+      ['walk', ['Westminster','War Rooms']], ['district', 'Westminster>Hammersmith'], ['district', 'Hammersmith>Kew Gardens'],
+      ['walk', ['Kew Gardens','Kew Victoria Gate']], ['district', ['Kew Gardens','Richmond']], ['walk', ['Richmond','Hill Rise','Hotel']]
+    ] },
+
+  { id: 'd31', date: '2026-12-31', label: 'Thu Dec 31', title: 'Fly home',
+    note: 'BA219 leaves Heathrow T5 at 12:10. Check-in opens online 24 hrs before.',
+    steps: [
+      ['08:00', 'Breakfast and check out.', 'Hotel', null, true],
+      ['08:45', 'Walk down to Richmond station with the bags (or a short taxi down the hill).', 'Richmond', 'walk', false],
+      ['09:00', 'District line to Hammersmith (~20 min).', 'Hammersmith', 'district', false],
+      ['09:25', 'Piccadilly line to Heathrow Terminal 5 (~45 min). Take a train going to Terminal 5, not Terminal 4.', 'Heathrow T5', 'piccadilly', false],
+      ['~10:15', 'At Terminal 5, about 2 hours before departure.', 'Heathrow T5', null, false],
       ['12:10', '<span class="w">BA219 to Denver</span>', 'Heathrow T5', null, true]
     ],
     legs: [
       ['walk', ['Hotel','Hill Rise','Richmond']], ['district', 'Richmond>Hammersmith'], ['piccadilly', 'Hammersmith>Heathrow T5']
     ] }
 ];
+
+// Single-day map files set this to a day id, e.g. 'd26'. The family site leaves it null.
+const ONLY = null;
 /* ===================== end of trip content ===================== */
 
 const LINES = {
@@ -299,10 +316,20 @@ function stops(line, spec) {
   return i <= j ? arr.slice(i, j + 1) : arr.slice(j, i + 1).reverse();
 }
 
+/* ---------- single-day mode ---------- */
+if (ONLY) {
+  DAYS.splice(0, DAYS.length, ...DAYS.filter(d => d.id === ONLY));
+  for (let i = MARKERS.length - 1; i >= 0; i--) {
+    const [cat, day] = MARKERS[i];
+    const keep = day === ONLY || cat === 'hotel' || (cat === 'airport' && (ONLY === 'd26' || ONLY === 'd31'));
+    if (!keep) MARKERS.splice(i, 1);
+  }
+}
+
 /* ---------- icons ---------- */
 const COLORS = { hotel:'#16a34a', stadium:'#1d4ed8', theatre:'#facc15', sight:'#111111', airport:'#dc2626' };
 const CAT_LABEL = { airport:'Airport', hotel:'Hotel', stadium:'Stadiums', theatre:'Theatre', sight:'Things to see' };
-const SHAPE = { d26:'circle', d27:'square', d28:'star', d29:'triangle', d30:'diamond' };
+const SHAPE = { d26:'circle', d27:'square', d28:'star', d29:'triangle', d30:'pentagon', d31:'diamond' };
 function pinSvg(color, size) {
   const w = Math.round(size * 0.72);
   return '<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+size+'" viewBox="0 0 24 34"><path d="M12 0C5.4 0 0 5.3 0 11.9 0 20.8 12 34 12 34s12-13.2 12-22.1C24 5.3 18.6 0 12 0z" fill="'+color+'" stroke="#333" stroke-width="1.2"/><circle cx="12" cy="12" r="4.6" fill="#fff"/></svg>';
@@ -314,9 +341,10 @@ function shapeSvg(shape, color, size, label) {
     square: '<rect x="2" y="2" width="20" height="20" rx="3" fill="'+color+'" '+st+'/>',
     triangle: '<path d="M12 1.5 L23 22 L1 22 Z" fill="'+color+'" '+st+'/>',
     star: '<path d="M12 1 L14.9 8.6 L23 9 L16.7 14.1 L18.9 22 L12 17.5 L5.1 22 L7.3 14.1 L1 9 L9.1 8.6 Z" fill="'+color+'" '+st+'/>',
-    diamond: '<path d="M12 1 L23 12 L12 23 L1 12 Z" fill="'+color+'" '+st+'/>'
+    diamond: '<path d="M12 1 L23 12 L12 23 L1 12 Z" fill="'+color+'" '+st+'/>',
+    pentagon: '<path d="M12 1.5 L22.8 9.4 L18.7 22.3 L5.3 22.3 L1.2 9.4 Z" fill="'+color+'" '+st+'/>'
   }[shape];
-  const ty = shape === 'triangle' ? 17.3 : shape === 'star' ? 14.4 : 12.6;
+  const ty = shape === 'triangle' ? 17.3 : shape === 'star' ? 14.4 : shape === 'pentagon' ? 13.6 : 12.6;
   const txt = label ? '<text x="12" y="'+ty+'" text-anchor="middle" dominant-baseline="middle" font-size="7.5" font-weight="800" font-family="Inter,sans-serif" fill="'+(color === COLORS.theatre ? '#111' : '#fff')+'">'+label+'</text>' : '';
   return '<svg xmlns="http://www.w3.org/2000/svg" width="'+size+'" height="'+size+'" viewBox="0 0 24 24">'+body+txt+'</svg>';
 }
@@ -324,7 +352,7 @@ function icon(html, w, h, anchorY) { return L.divIcon({ className: 'pin', html, 
 
 /* ---------- map ---------- */
 const wide = () => window.matchMedia('(min-width: 900px)').matches;
-const map = L.map('map', { zoomControl: false, attributionControl: true });
+const map = L.map('map', { zoomControl: false, attributionControl: true, zoomSnap: 0.5 });
 if (wide()) L.control.zoom({ position: 'bottomright' }).addTo(map);
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19,
@@ -376,7 +404,7 @@ function sheetPad() {
   if (wide()) return { paddingTopLeft: [420, 70], paddingBottomRight: [50, 40] };
   const sh = document.getElementById('sheet').getBoundingClientRect();
   const covered = Math.max(0, window.innerHeight - sh.top);
-  return { paddingTopLeft: [24, 80], paddingBottomRight: [24, covered + 20] };
+  return { paddingTopLeft: [24, 80], paddingBottomRight: [80, covered + 20] };
 }
 function setRoute(id, on) {
   visible[id] = on;
@@ -430,7 +458,12 @@ DAYS.forEach(d => {
     const open = !el.classList.contains('open');
     document.querySelectorAll('.day.open').forEach(x => x !== el && x.classList.remove('open'));
     el.classList.toggle('open', open);
-    if (open) { if (!wide() && sheetState === 'peek') setSheet('half'); focusDay(d.id); setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); }
+    if (open) {
+      const moving = !wide() && sheetState === 'peek';
+      if (moving) setSheet('half');
+      setTimeout(() => focusDay(d.id), moving ? 320 : 0);
+      setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+    }
     else { focusDay(null); }
   });
   el.querySelector('input').addEventListener('change', e => setRoute(d.id, e.target.checked));
@@ -460,7 +493,7 @@ function markNext() {
 /* ---------- key ---------- */
 document.getElementById('key').innerHTML =
   '<h4>Places</h4>' + Object.keys(CAT_LABEL).map(k => '<div>' + (k === 'airport' || k === 'hotel' ? pinSvg(COLORS[k], 18) : shapeSvg('circle', COLORS[k], 15, '')) + CAT_LABEL[k] + '</div>').join('') +
-  '<h4>Day (marker shape)</h4>' + DAYS.filter(d => d.id !== 'd30').map(d => '<div>' + shapeSvg(SHAPE[d.id], '#94a3b8', 15, '') + d.label + '</div>').join('') +
+  '<h4>Day (marker shape)</h4>' + DAYS.filter(d => MARKERS.some(m => m[1] === d.id)).map(d => '<div>' + shapeSvg(SHAPE[d.id], '#94a3b8', 15, '') + d.label + '</div>').join('') +
   '<h4>Routes</h4>' + ['piccadilly','district','hc','southern','swr','walk'].map(k => '<div><svg width="26" height="10"><line x1="1" y1="5" x2="25" y2="5" stroke="' + LINES[k].color + '" stroke-width="4" stroke-linecap="round" ' + (LINES[k].dash ? 'stroke-dasharray="' + (k === 'walk' ? '1 5' : '5 3') + '"' : '') + '/></svg>' + LINES[k].name + (k==='walk'||k==='southern'||k==='swr'?'':' line') + '</div>').join('') +
   '<div style="margin-top:8px;color:#64748b">Bigger marker = booked <span class="ok">✓</span></div>';
 document.getElementById('keybtn').addEventListener('click', () => document.getElementById('key').classList.toggle('show'));
@@ -490,12 +523,17 @@ grab.addEventListener('pointerup', e => {
 window.addEventListener('resize', () => { if (wide()) sheet.style.transform = ''; else setSheet(sheetState); });
 
 /* ---------- start ---------- */
-if (todayDay) {
-  DAYS.forEach(d => setRoute(d.id, d.id === todayDay.id));
-  const el = document.querySelector('[data-day="' + todayDay.id + '"]'); el.classList.add('open');
+const startDay = ONLY ? DAYS[0] : todayDay;
+if (ONLY) {
+  document.querySelector('#grab h1').textContent = 'London · ' + DAYS[0].label;
+  document.title = 'London · ' + DAYS[0].label;
+}
+if (startDay) {
+  DAYS.forEach(d => setRoute(d.id, d.id === startDay.id));
+  const el = document.querySelector('[data-day="' + startDay.id + '"]'); el.classList.add('open');
   setSheet('half'); map.fitBounds(allBounds);
-  setTimeout(() => { focusDay(todayDay.id); markNext(); }, 350);
-  setInterval(markNext, 60000);
+  setTimeout(() => { focusDay(startDay.id); markNext(); }, 350);
+  if (todayDay) setInterval(markNext, 60000);
 } else {
   DAYS.forEach(d => setRoute(d.id, true));
   setSheet('peek');
